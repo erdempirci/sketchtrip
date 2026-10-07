@@ -6,22 +6,70 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Heart, 
-  ArrowLeft,
+  ArrowLeft, 
   Plus, 
   MapPin, 
   Image as ImageIcon,
-  Edit3,
-  Trash2,
-  Check,
-  ArrowLeftRight,
-  MoveLeft,
-  MoveRight,
-  SlidersHorizontal,
-  X
+  Edit3, 
+  Trash2, 
+  Check, 
+  MoveLeft, 
+  MoveRight, 
+  SlidersHorizontal, 
+  X,
+  Palette
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
-// Başlangıç Albümleri
+// Sanat Stilleri Tanımları ve CSS Filtre Kodları
+const ART_STYLES = [
+  {
+    id: 'acrylic',
+    name: 'Akrilik Tablo',
+    emoji: '🎨',
+    badge: 'Akrilik Sanat',
+    style: {
+      filter: 'contrast(140%) saturate(165%) brightness(105%) sepia(10%) drop-shadow(0px 0px 2px rgba(0,0,0,0.3))'
+    }
+  },
+  {
+    id: 'watercolor',
+    name: 'Ege Suluboya',
+    emoji: '🌊',
+    badge: 'Suluboya Efekti',
+    style: {
+      filter: 'contrast(115%) saturate(135%) brightness(112%) hue-rotate(5deg) blur(0.3px)'
+    }
+  },
+  {
+    id: 'pencil',
+    name: 'Karakalem',
+    emoji: '✏️',
+    badge: 'Karakalem Eskiz',
+    style: {
+      filter: 'grayscale(100%) contrast(180%) brightness(95%)'
+    }
+  },
+  {
+    id: 'vintage',
+    name: 'Retro Polaroid',
+    emoji: '🎞️',
+    badge: 'Vintage 1970',
+    style: {
+      filter: 'sepia(55%) contrast(120%) brightness(95%) saturate(130%)'
+    }
+  },
+  {
+    id: 'gouache',
+    name: 'Washi Guaj',
+    emoji: '🪻',
+    badge: 'Pastel Guaj',
+    style: {
+      filter: 'contrast(125%) saturate(190%) brightness(102%) hue-rotate(-15deg)'
+    }
+  }
+];
+
 const initialAlbums = [
   {
     id: 'kyoto-2024',
@@ -35,13 +83,15 @@ const initialAlbums = [
         id: 101,
         title: "Fushimi Inari Torii Yolu",
         note: "Sabahın erken saatlerinde sessiz bir tırmanış. Tapınak kırmızıları puslu havada parlıyordu.",
-        photoUrl: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=1000&q=80"
+        photoUrl: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=1000&q=80",
+        artStyleId: 'acrylic'
       },
       {
         id: 102,
         title: "Gion Geleneksel Sokakları",
         note: "Ahşap çay evleri ve yağmur sonrası taş kaldırımlardaki yansımalar büyüleyiciydi.",
-        photoUrl: "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?auto=format&fit=crop&w=1000&q=80"
+        photoUrl: "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?auto=format&fit=crop&w=1000&q=80",
+        artStyleId: 'watercolor'
       }
     ]
   },
@@ -57,7 +107,8 @@ const initialAlbums = [
         id: 201,
         title: "Gündoğumu Balonları",
         note: "Gökyüzü pastel turuncu ve pembe bir rüyaya dönüştü.",
-        photoUrl: "https://images.unsplash.com/photo-1527838832700-5059252407fa?auto=format&fit=crop&w=1000&q=80"
+        photoUrl: "https://images.unsplash.com/photo-1527838832700-5059252407fa?auto=format&fit=crop&w=1000&q=80",
+        artStyleId: 'vintage'
       }
     ]
   }
@@ -66,12 +117,12 @@ const initialAlbums = [
 export default function App() {
   const [albums, setAlbums] = useState(initialAlbums);
   const [activeAlbumId, setActiveAlbumId] = useState(null);
-  const [activeTab, setActiveTab] = useState('library'); // 'library' | 'create' | 'store'
+  const [activeTab, setActiveTab] = useState('library');
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [sliderPosition, setSliderPosition] = useState(50);
   const [isLiked, setIsLiked] = useState(false);
   
-  // Düzenleme ve Yönetim State'leri
+  // Düzenleme State'leri
   const [isEditingCurrentPage, setIsEditingCurrentPage] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editNote, setEditNote] = useState('');
@@ -80,13 +131,16 @@ export default function App() {
   // Yeni Albüm Ekleme
   const [newTitle, setNewTitle] = useState('');
   const [newLocation, setNewLocation] = useState('');
+  const [selectedInitialStyle, setSelectedInitialStyle] = useState('acrylic');
   const [uploadedPhotos, setUploadedPhotos] = useState([]);
   const fileInputRef = useRef(null);
 
   const activeAlbum = albums.find(a => a.id === activeAlbumId);
   const currentPage = activeAlbum ? activeAlbum.pages[currentPageIndex] : null;
 
-  // Albüm Açma
+  // Geçerli sayfanın seçili stili
+  const currentArtStyle = ART_STYLES.find(s => s.id === (currentPage?.artStyleId || 'acrylic')) || ART_STYLES[0];
+
   const openAlbum = (albumId) => {
     setActiveAlbumId(albumId);
     setCurrentPageIndex(0);
@@ -101,7 +155,20 @@ export default function App() {
     setIsEditingCurrentPage(false);
   };
 
-  // Düzenleme Modunu Aç
+  // Mevcut Sayfanın Sanat Stilini Değiştir
+  const changePageArtStyle = (styleId) => {
+    if (!activeAlbum || !currentPage) return;
+    setAlbums(prevAlbums => prevAlbums.map(album => {
+      if (album.id !== activeAlbum.id) return album;
+      const updatedPages = [...album.pages];
+      updatedPages[currentPageIndex] = {
+        ...updatedPages[currentPageIndex],
+        artStyleId: styleId
+      };
+      return { ...album, pages: updatedPages };
+    }));
+  };
+
   const startEditing = () => {
     if (!currentPage) return;
     setEditTitle(currentPage.title);
@@ -109,7 +176,6 @@ export default function App() {
     setIsEditingCurrentPage(true);
   };
 
-  // Düzenlemeyi Kaydet
   const savePageEdit = () => {
     if (!activeAlbum || !currentPage) return;
     setAlbums(prevAlbums => prevAlbums.map(album => {
@@ -125,14 +191,13 @@ export default function App() {
     setIsEditingCurrentPage(false);
   };
 
-  // Aktif Sayfayı Sil
   const deleteCurrentPage = (pageIdxToDelete = currentPageIndex) => {
     if (!activeAlbum) return;
     if (activeAlbum.pages.length <= 1) {
-      alert("Albümde en az 1 sayfa bulunmalıdır. Tüm albümü silmek isterseniz kitaplıktan silebilirsiniz.");
+      alert("Albümde en az 1 sayfa bulunmalıdır.");
       return;
     }
-    if (!confirm("Bu sayfayı defterden silmek istediğinize emin misiniz?")) return;
+    if (!confirm("Bu sayfayı silmek istediğinize emin misiniz?")) return;
 
     setAlbums(prevAlbums => prevAlbums.map(album => {
       if (album.id !== activeAlbum.id) return album;
@@ -147,10 +212,8 @@ export default function App() {
     if (currentPageIndex >= activeAlbum.pages.length - 1) {
       setCurrentPageIndex(Math.max(0, activeAlbum.pages.length - 2));
     }
-    setIsEditingCurrentPage(false);
   };
 
-  // Sayfa Sırasını Değiştir (Sola/Sağa Taşı)
   const movePage = (fromIndex, direction) => {
     if (!activeAlbum) return;
     const toIndex = fromIndex + direction;
@@ -168,7 +231,6 @@ export default function App() {
     setCurrentPageIndex(toIndex);
   };
 
-  // Çoklu Fotoğraf Seçimi
   const handlePhotoUpload = (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
@@ -181,8 +243,9 @@ export default function App() {
           {
             id: Date.now() + index,
             title: file.name.replace(/\.[^/.]+$/, "").substring(0, 16) || `Anı #${prev.length + 1}`,
-            note: "Bu anın hatırası buraya yazılabilir.",
-            photoUrl: reader.result
+            note: "Bu anın özel hatırası.",
+            photoUrl: reader.result,
+            artStyleId: selectedInitialStyle
           }
         ]);
       };
@@ -190,7 +253,6 @@ export default function App() {
     });
   };
 
-  // Yeni Albüm Kaydet
   const handleCreateAlbum = (e) => {
     e.preventDefault();
     if (!uploadedPhotos.length) {
@@ -260,7 +322,7 @@ export default function App() {
           ) : (
             <div>
               <h1 className="text-base font-bold text-stone-900 leading-tight">SketchTrip</h1>
-              <p className="text-[10px] text-stone-500 font-medium">Seyahat Günlükleri & Eskiz Defterleri</p>
+              <p className="text-[10px] text-stone-500 font-medium">Seyahat Günlükleri & Sanat Defteri</p>
             </div>
           )}
 
@@ -277,7 +339,7 @@ export default function App() {
         {/* Ana İçerik */}
         <main className="flex-1 overflow-y-auto relative">
           
-          {/* DURUM 1: DEFTER İÇİ & DÜZENLEME */}
+          {/* DURUM 1: DEFTER İÇİ */}
           {activeAlbum && currentPage ? (
             <div className="h-full flex flex-col justify-between p-4 pb-20 animate-in fade-in duration-200">
               <div className="relative flex-1 bg-amber-50/80 border border-amber-200/80 rounded-2xl p-4 shadow-md flex flex-col justify-between overflow-hidden">
@@ -285,7 +347,7 @@ export default function App() {
                 {/* Washi Tape */}
                 <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-24 h-5 bg-amber-200/80 backdrop-blur-sm -rotate-1 shadow-sm border border-amber-300/40 z-10 rounded-sm"></div>
 
-                {/* Üst Kısım: Başlık & Aksiyon Butonları (Düzenle / Sıra Değiştir / Sil) */}
+                {/* Üst Başlık & Araçlar */}
                 <div className="pt-2 border-b border-stone-200/70 pb-2">
                   <div className="flex justify-between items-start">
                     <div className="flex-1 pr-2">
@@ -298,7 +360,6 @@ export default function App() {
                           value={editTitle}
                           onChange={(e) => setEditTitle(e.target.value)}
                           className="w-full text-base font-bold text-stone-900 bg-white border border-amber-400 rounded-lg px-2 py-0.5 mt-0.5 focus:outline-none"
-                          placeholder="Sayfa Başlığı"
                         />
                       ) : (
                         <h2 className="text-lg font-bold text-stone-900 leading-tight">
@@ -307,40 +368,26 @@ export default function App() {
                       )}
                     </div>
 
-                    {/* Araç Kutusu: Düzenle & Sil */}
                     <div className="flex items-center gap-1 bg-white/80 backdrop-blur px-1.5 py-1 rounded-xl border border-stone-200 shadow-sm">
                       {isEditingCurrentPage ? (
-                        <button 
-                          onClick={savePageEdit}
-                          className="p-1 text-emerald-600 hover:text-emerald-700" 
-                          title="Kaydet"
-                        >
+                        <button onClick={savePageEdit} className="p-1 text-emerald-600">
                           <Check size={16} />
                         </button>
                       ) : (
-                        <button 
-                          onClick={startEditing}
-                          className="p-1 text-stone-500 hover:text-stone-800" 
-                          title="Metni Düzenle"
-                        >
+                        <button onClick={startEditing} className="p-1 text-stone-500 hover:text-stone-800">
                           <Edit3 size={15} />
                         </button>
                       )}
-
-                      <button 
-                        onClick={() => deleteCurrentPage()}
-                        className="p-1 text-rose-500 hover:text-rose-700" 
-                        title="Sayfayı Sil"
-                      >
+                      <button onClick={() => deleteCurrentPage()} className="p-1 text-rose-500 hover:text-rose-700">
                         <Trash2 size={15} />
                       </button>
                     </div>
                   </div>
 
-                  {/* Sıra Değiştirme Butonları (Sola / Sağa Taşı) */}
+                  {/* Sıra Değiştirme */}
                   <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-amber-200/40 text-[11px] text-stone-500">
-                    <span className="font-medium text-stone-500">
-                      Sıra: {currentPageIndex + 1} / {activeAlbum.pages.length}
+                    <span className="font-medium">
+                      Sayfa: {currentPageIndex + 1} / {activeAlbum.pages.length}
                     </span>
                     <div className="flex items-center gap-1">
                       <button 
@@ -349,7 +396,6 @@ export default function App() {
                         className={`px-2 py-0.5 rounded border text-[10px] font-semibold flex items-center gap-1 ${
                           currentPageIndex === 0 ? 'text-stone-300 border-stone-200' : 'bg-white text-stone-700 hover:bg-stone-50 border-stone-300'
                         }`}
-                        title="Sayfayı bir öne taşı"
                       >
                         <MoveLeft size={11} /> Öne Al
                       </button>
@@ -359,7 +405,6 @@ export default function App() {
                         className={`px-2 py-0.5 rounded border text-[10px] font-semibold flex items-center gap-1 ${
                           currentPageIndex === activeAlbum.pages.length - 1 ? 'text-stone-300 border-stone-200' : 'bg-white text-stone-700 hover:bg-stone-50 border-stone-300'
                         }`}
-                        title="Sayfayı bir arkaya taşı"
                       >
                         Arkaya Al <MoveRight size={11} />
                       </button>
@@ -368,19 +413,20 @@ export default function App() {
                 </div>
 
                 {/* Slider */}
-                <div className="relative my-2.5 rounded-xl overflow-hidden aspect-[4/3] shadow-inner border border-stone-300">
+                <div className="relative my-2 rounded-xl overflow-hidden aspect-[4/3] shadow-inner border border-stone-300">
+                  {/* Dinamik Sanat Filtresi Uygulanmış Katman */}
                   <img 
                     src={currentPage.photoUrl} 
-                    alt="Akrilik Çizim" 
-                    className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-                    style={{
-                      filter: "contrast(135%) saturate(160%) brightness(105%) sepia(10%) drop-shadow(0px 0px 2px rgba(0,0,0,0.3))"
-                    }}
+                    alt="Sanat Eseri" 
+                    className="absolute inset-0 w-full h-full object-cover pointer-events-none transition-all duration-300"
+                    style={currentArtStyle.style}
                   />
-                  <div className="absolute bottom-2 right-2 bg-stone-900/70 backdrop-blur-md text-[10px] text-white px-2 py-0.5 rounded-full font-medium z-10">
-                    🎨 Akrilik Sanat
+                  <div className="absolute bottom-2 right-2 bg-stone-900/75 backdrop-blur-md text-[10px] text-white px-2 py-0.5 rounded-full font-medium z-10 flex items-center gap-1">
+                    <span>{currentArtStyle.emoji}</span>
+                    <span>{currentArtStyle.badge}</span>
                   </div>
 
+                  {/* Orijinal Fotoğraf Katmanı */}
                   <div 
                     className="absolute inset-0 overflow-hidden pointer-events-none"
                     style={{ width: `${sliderPosition}%` }}
@@ -396,6 +442,7 @@ export default function App() {
                     </div>
                   </div>
 
+                  {/* Kaydırıcı */}
                   <div 
                     className="absolute top-0 bottom-0 w-0.5 bg-white shadow-xl pointer-events-none z-10 flex items-center justify-center"
                     style={{ left: `${sliderPosition}%` }}
@@ -415,6 +462,26 @@ export default function App() {
                   />
                 </div>
 
+                {/* YENİ: SANAT STİLİ SEÇİCİ BAR (DOKUNUNCA ANINDA DEĞİŞİR) */}
+                <div className="bg-white/60 p-1.5 rounded-xl border border-stone-200/80 mb-2">
+                  <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
+                    {ART_STYLES.map((st) => (
+                      <button
+                        key={st.id}
+                        onClick={() => changePageArtStyle(st.id)}
+                        className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold whitespace-nowrap transition shrink-0 ${
+                          currentArtStyle.id === st.id 
+                            ? 'bg-amber-800 text-white shadow-sm' 
+                            : 'bg-white text-stone-600 hover:bg-stone-50 border border-stone-200'
+                        }`}
+                      >
+                        <span>{st.emoji}</span>
+                        <span>{st.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Gezi Notu & Düzenleme */}
                 <div className="space-y-1">
                   {isEditingCurrentPage ? (
@@ -423,8 +490,7 @@ export default function App() {
                         rows={2}
                         value={editNote}
                         onChange={(e) => setEditNote(e.target.value)}
-                        className="w-full text-xs p-2 rounded-lg border border-amber-400 bg-white focus:outline-none font-sans"
-                        placeholder="Bu anı ile ilgili notunuzu yazın..."
+                        className="w-full text-xs p-2 rounded-lg border border-amber-400 bg-white focus:outline-none"
                       />
                       <button 
                         onClick={savePageEdit}
@@ -434,14 +500,14 @@ export default function App() {
                       </button>
                     </div>
                   ) : (
-                    <p className="text-stone-700 italic text-xs leading-relaxed min-h-[36px]">
+                    <p className="text-stone-700 italic text-xs leading-relaxed min-h-[30px]">
                       "{currentPage.note}"
                     </p>
                   )}
                   
                   <div className="flex items-center justify-between pt-1 border-t border-stone-200/60 text-xs text-stone-500">
                     <span className="text-[10px] text-stone-400">
-                      Sayfa {currentPageIndex + 1}
+                      Stil: {currentArtStyle.name}
                     </span>
                     <button 
                       onClick={() => setIsLiked(!isLiked)} 
@@ -452,8 +518,8 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Sayfa Geçiş Butonları */}
-                <div className="flex items-center justify-between mt-2 pt-2">
+                {/* Sayfa Butonları */}
+                <div className="flex items-center justify-between mt-1 pt-1.5">
                   <button 
                     onClick={handlePrevPage}
                     disabled={currentPageIndex === 0}
@@ -476,17 +542,14 @@ export default function App() {
                 </div>
               </div>
 
-              {/* AÇILIR SAYFA YÖNETİM PANELİ (DRAWER) */}
+              {/* Sayfa Yönetim Paneli */}
               {showPagesDrawer && (
                 <div className="absolute inset-x-0 bottom-0 bg-white/95 backdrop-blur-md rounded-t-3xl border-t border-stone-200 p-4 shadow-2xl z-40 max-h-[60%] flex flex-col">
                   <div className="flex justify-between items-center mb-3">
                     <h3 className="text-xs font-bold text-stone-800 uppercase tracking-wider">
-                      Albüm Sayfalarını Yönet ({activeAlbum.pages.length})
+                      Albüm Sayfaları ({activeAlbum.pages.length})
                     </h3>
-                    <button 
-                      onClick={() => setShowPagesDrawer(false)}
-                      className="p-1 text-stone-400 hover:text-stone-700"
-                    >
+                    <button onClick={() => setShowPagesDrawer(false)} className="p-1 text-stone-400">
                       <X size={18} />
                     </button>
                   </div>
@@ -495,7 +558,7 @@ export default function App() {
                     {activeAlbum.pages.map((p, idx) => (
                       <div 
                         key={p.id}
-                        className={`relative aspect-square rounded-xl overflow-hidden border-2 cursor-pointer shadow-sm group ${
+                        className={`relative aspect-square rounded-xl overflow-hidden border-2 cursor-pointer shadow-sm ${
                           currentPageIndex === idx ? 'border-amber-800 scale-95' : 'border-stone-200'
                         }`}
                         onClick={() => {
@@ -511,8 +574,7 @@ export default function App() {
                               e.stopPropagation();
                               deleteCurrentPage(idx);
                             }}
-                            className="p-1 bg-black/60 hover:bg-rose-600 rounded text-white transition"
-                            title="Sayfayı Sil"
+                            className="p-1 bg-black/60 hover:bg-rose-600 rounded text-white"
                           >
                             <Trash2 size={12} />
                           </button>
@@ -525,7 +587,7 @@ export default function App() {
             </div>
           ) : null}
 
-          {/* DURUM 2: ANA SAYFA (KİTAPLIK) */}
+          {/* DURUM 2: KİTAPLIK */}
           {!activeAlbumId && activeTab === 'library' && (
             <div className="p-4 pb-24 space-y-4">
               <div className="flex justify-between items-end">
@@ -573,7 +635,6 @@ export default function App() {
                   </div>
                 ))}
 
-                {/* Yeni Albüm Kartı */}
                 <div 
                   onClick={() => setActiveTab('create')}
                   className="rounded-2xl border-2 border-dashed border-amber-800/30 bg-amber-50/40 hover:bg-amber-100/40 transition flex flex-col items-center justify-center p-4 cursor-pointer text-center min-h-[160px]"
@@ -594,7 +655,7 @@ export default function App() {
               <div>
                 <span className="text-xs uppercase font-bold tracking-widest text-amber-700">Yeni Defter</span>
                 <h2 className="text-2xl font-bold text-stone-900">Gezi Albümü Oluştur</h2>
-                <p className="text-xs text-stone-500">Rotanı yaz ve fotoğraflarını topluca yükle.</p>
+                <p className="text-xs text-stone-500">Rotanı yaz, tarzını seç ve fotoğraflarını yükle.</p>
               </div>
 
               <form onSubmit={handleCreateAlbum} className="space-y-3">
@@ -622,6 +683,29 @@ export default function App() {
                   />
                 </div>
 
+                {/* YENİ: ALBÜMÜN SANAT TARZI SEÇİMİ */}
+                <div>
+                  <label className="text-[11px] font-bold text-stone-600 block mb-1">Varsayılan Sanat Tarzı</label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {ART_STYLES.map((style) => (
+                      <button
+                        key={style.id}
+                        type="button"
+                        onClick={() => setSelectedInitialStyle(style.id)}
+                        className={`p-2 rounded-xl text-center border transition text-xs flex flex-col items-center gap-0.5 ${
+                          selectedInitialStyle === style.id
+                            ? 'bg-amber-800 text-white border-amber-800 shadow-sm'
+                            : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
+                        }`}
+                      >
+                        <span className="text-sm">{style.emoji}</span>
+                        <span className="text-[10px] font-semibold">{style.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Toplu Fotoğraf Yükleme */}
                 <div>
                   <label className="text-[11px] font-bold text-stone-600 block mb-1">Fotoğraflar</label>
                   <input 
@@ -638,7 +722,7 @@ export default function App() {
                   >
                     <Plus size={24} className="mx-auto text-amber-800 mb-1" />
                     <p className="text-xs font-bold text-stone-800">Galeriden Fotoğrafları Seç</p>
-                    <p className="text-[10px] text-stone-400 mt-0.5">Tek seferde dilediğin kadar fotoğraf seçebilirsin</p>
+                    <p className="text-[10px] text-stone-400 mt-0.5">Toplu fotoğraf seçebilirsiniz</p>
                   </div>
                 </div>
 
